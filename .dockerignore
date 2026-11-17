@@ -1,0 +1,13 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+.mongo-data
+data
+.env
+.agents
+.taste-skill
+shots
+Questions.docx

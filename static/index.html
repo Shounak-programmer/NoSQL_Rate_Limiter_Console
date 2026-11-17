@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en" data-radius="sharp" data-motion="on">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rate Limiter Console — MongoDB Core</title>
+
+    <!-- Google Fonts: Onest + JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Design System Assets -->
+    <link rel="stylesheet" href="/static/assets/system.css">
+    <link rel="stylesheet" href="/static/assets/motion/motion.css">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+
+    <!-- Header Navigation -->
+    <header class="app-header">
+        <div class="brand-group">
+            <div class="brand-title">
+                RATE LIMITER
+                <span class="brand-badge">MongoDB Core</span>
+            </div>
+        </div>
+
+        <div class="header-meta">
+            <span class="shortcuts-hint">
+                <kbd>R</kbd> Request &nbsp;&bull;&nbsp; <kbd>B</kbd> Burst &nbsp;&bull;&nbsp; <kbd>S</kbd> Status
+            </span>
+            <div class="status-pill">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Connecting...</span>
+            </div>
+            <span class="algo-badge" id="currentAlgo">—</span>
+        </div>
+    </header>
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Main Workspace Grid (3 Columns) -->
+    <main class="app-container">
+
+        <!-- Left Column: Algorithm & Storage Operations -->
+        <aside class="column-left">
+
+            <!-- Card 1: Algorithm & Policy -->
+            <section class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                        Algorithm & Policy
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="algorithm">Algorithm Engine</label>
+                    <select class="form-select" id="algorithm">
+                        <option value="token_bucket">Token Bucket (Atomic Refill)</option>
+                        <option value="sliding_window">Sliding Window Log (Exact Log)</option>
+                        <option value="fixed_window">Fixed Window Counter (Discrete TTL)</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group" id="rateLimitGroup">
+                        <label class="form-label" for="rateLimit">Max Requests</label>
+                        <input class="form-input" type="number" id="rateLimit" value="10" min="1" max="1000">
+                    </div>
+                    <div class="form-group" id="windowGroup">
+                        <label class="form-label" for="windowSize">Window (sec)</label>
+                        <input class="form-input" type="number" id="windowSize" value="60" min="1" max="3600">
+                    </div>
+                </div>
+
+                <div class="form-group" id="refillGroup">
+                    <label class="form-label" for="refillRate">Refill Rate (tokens / sec)</label>
+                    <input class="form-input" type="number" id="refillRate" value="1.0" min="0.1" max="100" step="0.1">
+                    <span class="input-hint">Replenishes tokens dynamically via MongoDB pipeline</span>
+                </div>
+
+                <button class="btn btn-primary btn-block" id="applyConfig">
+                    Apply Policy Changes
+                </button>
+            </section>
+
+            <!-- Card 2: Storage Operations -->
+            <section class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+                            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+                        </svg>
+                        Storage Operations
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <button class="btn btn-ghost btn-block" id="resetClientQuota">
+                        Reset Client Quota (MongoDB Delete)
+                    </button>
+                    <div class="btn-group">
+                        <button class="btn btn-ghost" id="refreshConfig">Refresh</button>
+                        <button class="btn btn-ghost" id="clearLog">Clear Log</button>
+                    </div>
+                </div>
+            </section>
+
+        </aside>
+
+        <!-- Middle Column: Metrics, Capacity Allocation & Telemetry -->
+        <div class="column-center">
+
+            <!-- 4 Small Boxes: Metrics Ribbon -->
+            <div class="metrics-grid">
+                <div class="metric-card total">
+                    <div class="metric-label">Total Handled</div>
+                    <div class="metric-value" id="statTotal">0</div>
+                </div>
+                <div class="metric-card allowed">
+                    <div class="metric-label">200 Allowed</div>
+                    <div class="metric-value" id="statAllowed">0</div>
+                </div>
+                <div class="metric-card blocked">
+                    <div class="metric-label">429 Throttled</div>
+                    <div class="metric-value" id="statBlocked">0</div>
+                </div>
+                <div class="metric-card remaining">
+                    <div class="metric-label">Active Quota</div>
+                    <div class="metric-value" id="statRemaining">—</div>
+                </div>
+            </div>
+
+            <!-- Capacity Allocation: Capacity Barometer -->
+            <div class="card barometer-card">
+                <div class="barometer-header">
+                    <div class="card-title" style="margin-bottom: 0;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                        </svg>
+                        Live Capacity Allocation
+                    </div>
+                    <span class="barometer-percent" id="meterPercent">—%</span>
+                </div>
+
+                <div class="barometer-track">
+                    <div class="barometer-fill high" id="meterFill" style="width: 100%;"></div>
+                </div>
+
+                <div class="barometer-ticks">
+                    <span>0 (Exhausted)</span>
+                    <span id="meterMax">— Max Limit</span>
+                </div>
+            </div>
+
+            <!-- Telemetry: Real-time Request Stream Log -->
+            <div class="card log-card">
+                <div class="card-header">
+                    <div class="card-title" style="margin-bottom: 0;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="4 17 10 11 4 5"></polyline>
+                            <line x1="12" y1="19" x2="20" y2="19"></line>
+                        </svg>
+                        Telemetry Stream
+                    </div>
+                    <span class="log-meta" id="logCount">0 events</span>
+                </div>
+
+                <div class="log-terminal" id="logScroll">
+                    <div class="log-empty" id="logEmpty">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <div>No traffic recorded yet.</div>
+                        <div style="font-size: 11px; opacity: 0.7;">Dispatch a request or run a burst sequence to inspect rate limits in real time.</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: Traffic Dispatcher & Stress Engine -->
+        <aside class="column-right">
+
+            <!-- Card 3: Traffic Dispatcher -->
+            <section class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                        Traffic Dispatcher
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="clientId">Target Client ID</label>
+                    <input class="form-input" type="text" id="clientId" value="127.0.0.1" placeholder="e.g. 192.168.1.1 or api-key-prod">
+                    <span class="input-hint">Passed as X-Client-ID header to test multi-tenancy</span>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" id="sendRequest">
+                        Send 1 Request
+                    </button>
+                    <button class="btn btn-ghost" id="checkStatus">
+                        Query State
+                    </button>
+                </div>
+            </section>
+
+            <!-- Card 4: Stress Engine -->
+            <section class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+                            <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+                            <line x1="6" y1="1" x2="6" y2="4"></line>
+                            <line x1="10" y1="1" x2="10" y2="4"></line>
+                            <line x1="14" y1="1" x2="14" y2="4"></line>
+                        </svg>
+                        Stress Engine
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="burstCount">Burst Count</label>
+                        <input class="form-input" type="number" id="burstCount" value="15" min="1" max="200">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="burstDelay">Interval (ms)</label>
+                        <input class="form-input" type="number" id="burstDelay" value="40" min="0" max="2000" step="10">
+                    </div>
+                </div>
+
+                <button class="btn btn-danger btn-block" id="burstTest" style="margin-top: 8px;">
+                    Execute Burst Sequence
+                </button>
+            </section>
+
+        </aside>
+
+    </main>
+
+    <!-- Client Logic -->
+    <script src="/static/assets/motion/motion.js"></script>
+    <script src="/static/app.js"></script>
+</body>
+
+</html>
