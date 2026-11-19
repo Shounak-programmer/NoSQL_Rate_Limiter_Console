@@ -24,24 +24,24 @@
 ## Architecture
 
 ```
-┌────────┐       HTTP        ┌──────────────────────────────────┐
+┌────────┐       HTTP        ┌───────────────────────────────────┐
 │        │ ───────────────►  │          FastAPI Server           │
-│ Client │                   │  ┌────────────────────────────┐  │
+│ Client │                   │  ┌─────────────────────────────┐  │
 │        │ ◄───────────────  │  │   Rate Limit Middleware     │  │
-└────────┘   200 / 429       │  │  ┌──────────────────────┐  │  │  findOneAndUpdate   ┌─────────────┐
+└────────┘   200 / 429       │  │  ┌───────────────────────┐  │  │  findOneAndUpdate   ┌─────────────┐
                              │  │  │  Algorithm Layer      │  │  │  (Atomic Pipeline)  │             │
                              │  │  │  • Token Bucket       │──│──┼────────────────────►│   MongoDB   │
                              │  │  │  • Sliding Window Log │  │  │                     │   Server    │
                              │  │  │  • Fixed Window Ctr   │  │  │                     │             │
-                             │  │  └──────────────────────┘  │  │                     │ Collections │
-                             │  └────────────────────────────┘  │                     │ + TTL Index │
-                             │                                  │                     └─────────────┘
-                             │  /            → hello endpoint   │
-                             │  /limited     → rate-limited EP  │
-                             │  /status/{id} → client document  │
-                             │  /config      → view/update cfg  │
-                             │  /dashboard   → live dashboard   │
-                             └──────────────────────────────────┘
+                             │  │  └───────────────────────┘  │  │                     │ Collections │
+                             │  └─────────────────────────────┘  │                     │ + TTL Index │
+                             │                                   │                     └─────────────┘
+                             │  /            → hello endpoint    │
+                             │  /limited     → rate-limited EP   │
+                             │  /status/{id} → client document   │
+                             │  /config      → view/update cfg   │
+                             │  /dashboard   → live dashboard    │
+                             └───────────────────────────────────┘
 ```
 
 **Request lifecycle:**
