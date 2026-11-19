@@ -42,11 +42,12 @@ from models import (
 )
 
 # ---------------------------------------------------------------------------
-# Test parameters — intentionally short window for fast feedback
+# Test parameters — calibrated for both local and cloud network latency
 # ---------------------------------------------------------------------------
 
 TEST_MAX_REQUESTS = 5
-TEST_WINDOW_SECONDS = 3
+TEST_WINDOW_SECONDS = 6
+TEST_REFILL_RATE = 0.5  # 0.5 tokens/sec ensures a fast burst over WAN won't prematurely replenish
 TEST_CLIENT_ID = "test-client-127.0.0.1"
 
 # ANSI color helpers
@@ -110,6 +111,12 @@ def test_algorithm(
 
     limiter = limiter_cls(**kwargs)
     passed = True
+
+    # For fixed window, synchronize to avoid starting right on a rollover boundary
+    if limiter_cls == FixedWindowLimiter:
+        remainder = time.time() % TEST_WINDOW_SECONDS
+        if remainder > (TEST_WINDOW_SECONDS - 2.0):
+            time.sleep(TEST_WINDOW_SECONDS - remainder + 0.1)
 
     # ---- Phase 1: Allowed up to limit ----
     print(f"  {YELLOW}Phase 1: Sending {TEST_MAX_REQUESTS} requests (expect ALL allowed){RESET}")
@@ -175,7 +182,7 @@ def main() -> None:
         limiter_cls=TokenBucketLimiter,
         db=db,
         collection_name=TOKEN_BUCKET_COLLECTION,
-        extra_kwargs={"refill_rate": TEST_MAX_REQUESTS / TEST_WINDOW_SECONDS},
+        extra_kwargs={"refill_rate": TEST_REFILL_RATE},
     )
     results.append(("Token Bucket", ok))
 

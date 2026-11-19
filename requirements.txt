@@ -3,4 +3,6 @@ uvicorn
 pymongo
 requests
 httpx
+dnspython
+python-dotenv
 

@@ -15,6 +15,13 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass
+
 
 class Algorithm(str, Enum):
     """Supported rate-limiting algorithms.
