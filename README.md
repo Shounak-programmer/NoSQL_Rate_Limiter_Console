@@ -1,8 +1,8 @@
-# 🚦 Rate Limiter — MongoDB-Backed API Rate Limiting
+# Rate Limiter — MongoDB-Backed API Rate Limiting
 
 > **Course:** Unstructured Database (CSE13202)
 >
-> A full-featured API rate limiter built with **FastAPI** and **MongoDB** (Document Database), demonstrating three classic rate-limiting algorithms — each mapped onto MongoDB BSON documents, embedded arrays, atomic `findOneAndUpdate` aggregation pipelines, and TTL indexes.
+> A single-node API rate limiter built with **FastAPI** and **MongoDB** (Document Database), demonstrating three classic rate-limiting algorithms — each mapped onto MongoDB BSON documents, embedded arrays, atomic `findOneAndUpdate` aggregation pipelines, and TTL indexes.
 
 ---
 
@@ -17,19 +17,22 @@
 7. [Setup & Installation](#setup--installation)
 8. [Testing](#testing)
 9. [Dashboard](#dashboard)
-10. [Further Reading](#further-reading)
+10. [Limitations](#limitations)
+11. [Further Reading](#further-reading)
 
 ---
 
 ## Architecture
 
+This service uses a single-node application architecture backed by a MongoDB document store:
+
 ```
 ┌────────┐       HTTP        ┌───────────────────────────────────┐
-│        │ ───────────────►  │          FastAPI Server           │
+│        │ ───────────────►  │      FastAPI Server (Single Node) │
 │ Client │                   │  ┌─────────────────────────────┐  │
 │        │ ◄───────────────  │  │   Rate Limit Middleware     │  │
-└────────┘   200 / 429       │  │  ┌───────────────────────┐  │  │  findOneAndUpdate   ┌─────────────┐
-                             │  │  │  Algorithm Layer      │  │  │  (Atomic Pipeline)  │             │
+│        │   200 / 429       │  │  ┌───────────────────────┐  │  │  findOneAndUpdate   ┌─────────────┐
+└────────┘                   │  │  │  Algorithm Layer      │  │  │  (Atomic Pipeline)  │             │
                              │  │  │  • Token Bucket       │──│──┼────────────────────►│   MongoDB   │
                              │  │  │  • Sliding Window Log │  │  │                     │   Server    │
                              │  │  │  • Fixed Window Ctr   │  │  │                     │             │
@@ -217,7 +220,7 @@ pip install -r requirements.txt
 ### 3. Run the Server
 
 ```bash
-uvicorn app:app --reload --host 0.0.0.0 --port 8000
+uvicorn app:app --reload --host 127.0.0.1 --port 8000
 ```
 
 Open **http://localhost:8000/dashboard** for the interactive UI or **http://localhost:8000/docs** for Swagger API docs.
@@ -238,11 +241,23 @@ This tests **Token Bucket**, **Sliding Window Log**, and **Fixed Window Counter*
 
 ## Dashboard
 
+![Rate Limiter Console Dashboard](docs/dashboard.png)
+
 Visit **http://localhost:8000/dashboard** to:
 - Switch algorithms (`Token Bucket`, `Sliding Window Log`, `Fixed Window Counter`) at runtime
 - Tune `Max Requests`, `Window Size`, and `Refill Rate`
 - Test individual clients via `Client ID` (`X-Client-ID`)
-- Run a configurable **Burst Test** and watch live capacity gauge & request logs
+- Run a configurable **Burst Test** with concurrency control
+- Monitor real-time capacity and requests with the inline SVG time-series trace chart
+- Inspect raw MongoDB BSON documents live with real-time field change highlighting
+
+---
+
+## Limitations
+
+- **Client identity is header-trusted**: Client identification relies on the `X-Client-ID` header (falling back to `X-Forwarded-For` or client IP). In untrusted environments, clients can spoof their identity unless an upstream reverse proxy or API gateway sanitizes or strips these headers.
+- **Configuration endpoints are unauthenticated**: The policy endpoints (`GET /config`, `POST /config`, and `DELETE /status/{client_id}`) are open and unauthenticated for local demonstration and assignment inspection purposes. In production, administrative routes must be protected behind authentication and authorization middleware.
+- **Time source is the application server clock**: Time-based algorithms (`Token Bucket` refill and window boundaries) rely on the application server's system clock (`time.time()`). Clock drift across multi-instance deployments would lead to inconsistent rate evaluation; production multi-instance topologies should use NTP synchronization or a centralized database timestamp source.
 
 ---
 

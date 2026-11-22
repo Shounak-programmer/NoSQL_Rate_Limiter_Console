@@ -66,6 +66,7 @@ pnpm-debug.log*
 .agents/
 .taste-skill/
 shots/
+skills-lock.json
 
 # --- Unit Tests & Coverage ---
 .tox/

@@ -57,9 +57,11 @@ CSE13202 — Unstructured Database Assignment
 
 from __future__ import annotations
 
+import datetime
 import time
 from typing import Any, Dict, Optional
 
+from bson import ObjectId
 from pymongo import ASCENDING, MongoClient
 from pymongo.database import Database
 
@@ -144,7 +146,22 @@ def fixed_window_doc_id(client_id: str, window_id: Optional[int] = None) -> str:
 # State inspection helpers
 # ---------------------------------------------------------------------------
 
-def get_token_bucket_state(db: Database, client_id: str) -> Dict[str, Any]:
+def _sanitize_doc(doc: Any) -> Any:
+    """Recursively stringify datetimes and ObjectIds for JSON serialization."""
+    if doc is None:
+        return None
+    if isinstance(doc, (datetime.datetime, datetime.date)):
+        return doc.isoformat()
+    if isinstance(doc, ObjectId):
+        return str(doc)
+    if isinstance(doc, dict):
+        return {str(k): _sanitize_doc(v) for k, v in doc.items()}
+    if isinstance(doc, (list, tuple, set)):
+        return [_sanitize_doc(v) for v in doc]
+    return doc
+
+
+def get_token_bucket_state(db: Database, client_id: str, raw: bool = False) -> Dict[str, Any]:
     """Read the current Token Bucket document for *client_id*."""
     doc = db[TOKEN_BUCKET_COLLECTION].find_one({"_id": client_id})
     max_req = settings.rate_limit.max_requests
@@ -153,7 +170,7 @@ def get_token_bucket_state(db: Database, client_id: str) -> Dict[str, Any]:
     )
 
     if not doc:
-        return {
+        res = {
             "algorithm": "token_bucket",
             "client_id": client_id,
             "collection": TOKEN_BUCKET_COLLECTION,
@@ -163,6 +180,9 @@ def get_token_bucket_state(db: Database, client_id: str) -> Dict[str, Any]:
             "last_refill": None,
             "exists": False,
         }
+        if raw:
+            res["document"] = None
+        return res
 
     now = time.time()
     elapsed = max(0.0, now - float(doc.get("last_refill", now)))
@@ -171,7 +191,7 @@ def get_token_bucket_state(db: Database, client_id: str) -> Dict[str, Any]:
         float(doc.get("tokens", 0.0)) + elapsed * float(refill_rate),
     )
 
-    return {
+    res = {
         "algorithm": "token_bucket",
         "client_id": client_id,
         "collection": TOKEN_BUCKET_COLLECTION,
@@ -182,9 +202,12 @@ def get_token_bucket_state(db: Database, client_id: str) -> Dict[str, Any]:
         "expires_at": doc.get("expires_at").isoformat() if doc.get("expires_at") else None,
         "exists": True,
     }
+    if raw:
+        res["document"] = _sanitize_doc(doc)
+    return res
 
 
-def get_sliding_window_state(db: Database, client_id: str) -> Dict[str, Any]:
+def get_sliding_window_state(db: Database, client_id: str, raw: bool = False) -> Dict[str, Any]:
     """Read the current Sliding Window Log document for *client_id*."""
     doc = db[SLIDING_WINDOW_COLLECTION].find_one({"_id": client_id})
     max_req = settings.rate_limit.max_requests
@@ -193,7 +216,7 @@ def get_sliding_window_state(db: Database, client_id: str) -> Dict[str, Any]:
     window_start = now - window_seconds
 
     if not doc:
-        return {
+        res = {
             "algorithm": "sliding_window",
             "client_id": client_id,
             "collection": SLIDING_WINDOW_COLLECTION,
@@ -204,10 +227,13 @@ def get_sliding_window_state(db: Database, client_id: str) -> Dict[str, Any]:
             "window_seconds": window_seconds,
             "exists": False,
         }
+        if raw:
+            res["document"] = None
+        return res
 
     timestamps = doc.get("timestamps", [])
     active = [ts for ts in timestamps if ts > window_start]
-    return {
+    res = {
         "algorithm": "sliding_window",
         "client_id": client_id,
         "collection": SLIDING_WINDOW_COLLECTION,
@@ -219,9 +245,12 @@ def get_sliding_window_state(db: Database, client_id: str) -> Dict[str, Any]:
         "expires_at": doc.get("expires_at").isoformat() if doc.get("expires_at") else None,
         "exists": True,
     }
+    if raw:
+        res["document"] = _sanitize_doc(doc)
+    return res
 
 
-def get_fixed_window_state(db: Database, client_id: str) -> Dict[str, Any]:
+def get_fixed_window_state(db: Database, client_id: str, raw: bool = False) -> Dict[str, Any]:
     """Read the current Fixed Window Counter document for *client_id*."""
     window_seconds = settings.rate_limit.window_seconds
     max_req = settings.rate_limit.max_requests
@@ -233,7 +262,7 @@ def get_fixed_window_state(db: Database, client_id: str) -> Dict[str, Any]:
     count = int(doc.get("count", 0)) if doc else 0
     ttl_seconds = max(0, ((window_id + 1) * window_seconds) - int(now))
 
-    return {
+    res = {
         "algorithm": "fixed_window",
         "client_id": client_id,
         "collection": FIXED_WINDOW_COLLECTION,
@@ -246,9 +275,12 @@ def get_fixed_window_state(db: Database, client_id: str) -> Dict[str, Any]:
         "expires_at": doc.get("expires_at").isoformat() if doc and doc.get("expires_at") else None,
         "exists": doc is not None,
     }
+    if raw:
+        res["document"] = _sanitize_doc(doc)
+    return res
 
 
-def get_client_state(db: Database, client_id: str, algorithm: str) -> Dict[str, Any]:
+def get_client_state(db: Database, client_id: str, algorithm: str, raw: bool = False) -> Dict[str, Any]:
     """Dispatch to the appropriate state inspector based on *algorithm*."""
     dispatchers = {
         "token_bucket": get_token_bucket_state,
@@ -258,7 +290,7 @@ def get_client_state(db: Database, client_id: str, algorithm: str) -> Dict[str, 
     fn = dispatchers.get(algorithm)
     if fn is None:
         return {"error": f"Unknown algorithm: {algorithm}"}
-    return fn(db, client_id)
+    return fn(db, client_id, raw=raw)
 
 
 def clear_client_state(db: Database, client_id: str) -> int:

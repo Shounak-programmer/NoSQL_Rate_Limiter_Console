@@ -21,13 +21,18 @@ CSE13202 — Unstructured Database Assignment
 
 from __future__ import annotations
 
+import logging
 import re
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Dict
+from urllib.parse import urlsplit
+
+logger = logging.getLogger(__name__)
 
 from fastapi import FastAPI, Request, Response
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -126,12 +131,23 @@ _EXEMPT_PREFIXES = (
     "/status",
     "/dashboard",
     "/static",
+    "/health",
 )
 
 
 def _mask_uri(uri: str) -> str:
-    """Hide credentials if a MongoDB URI contains username/password."""
-    return re.sub(r"://([^:@]+):([^@]+)@", r"://\1:***@", uri)
+    """Mask a MongoDB URI, hiding credentials and showing only scheme and host's first label."""
+    try:
+        parsed = urlsplit(uri)
+        scheme = parsed.scheme or "mongodb"
+        host = parsed.hostname or "localhost"
+        first_label = host if all(c.isdigit() or c == "." for c in host) else host.split(".")[0]
+        if parsed.username or parsed.password or "@" in uri:
+            return f"{scheme}://***@{first_label}"
+        port_str = f":{parsed.port}" if parsed.port else ""
+        return f"{scheme}://{first_label}{port_str}"
+    except Exception:
+        return "mongodb://***"
 
 
 @app.middleware("http")
@@ -146,8 +162,8 @@ async def rate_limit_middleware(request: Request, call_next) -> Response:
     """
     path = request.url.path
 
-    # Skip rate limiting for docs, config, status, and dashboard assets
-    if any(path.startswith(prefix) for prefix in _EXEMPT_PREFIXES):
+    # Skip rate limiting for exact root, and prefixes like docs, health, config, etc.
+    if path == "/" or any(path.startswith(prefix) for prefix in _EXEMPT_PREFIXES):
         return await call_next(request)
 
     # Identify client: explicit header (great for testing) → proxy header → IP
@@ -158,14 +174,12 @@ async def rate_limit_middleware(request: Request, call_next) -> Response:
     ).strip()
 
     try:
-        allowed, info = limiter.is_allowed(client_id)
+        allowed, info = await run_in_threadpool(limiter.is_allowed, client_id)
     except PyMongoError as exc:
+        logger.error("MongoDB error during rate limiting: %s", exc)
         return JSONResponse(
             status_code=503,
-            content={
-                "detail": "Database unavailable (MongoDB connection error).",
-                "error": str(exc),
-            },
+            content={"detail": "Database unavailable. Please try again later."},
         )
 
     if not allowed:
@@ -193,6 +207,12 @@ async def rate_limit_middleware(request: Request, call_next) -> Response:
 # Endpoints
 # ---------------------------------------------------------------------------
 
+@app.get("/health", tags=["General"])
+async def health() -> Dict[str, str]:
+    """Health check endpoint — confirms the service is operational."""
+    return {"status": "ok"}
+
+
 @app.get("/", tags=["General"])
 async def root() -> Dict[str, Any]:
     """Hello endpoint — confirms the service is running."""
@@ -218,24 +238,41 @@ async def limited_endpoint() -> Dict[str, str]:
 
 
 @app.get("/status/{client_id}", tags=["Monitoring"])
-async def client_status(client_id: str) -> Dict[str, Any]:
+async def client_status(client_id: str, raw: bool = False) -> Dict[str, Any]:
     """Inspect the current rate-limit document for a specific client."""
-    state = get_client_state(
-        db, client_id, settings.rate_limit.algorithm.value
-    )
-    return {
+    try:
+        state = await run_in_threadpool(
+            get_client_state, db, client_id, settings.rate_limit.algorithm.value, raw
+        )
+    except PyMongoError as exc:
+        logger.error("MongoDB error fetching client status: %s", exc)
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Database unavailable. Please try again later."},
+        )
+    res = {
         "client_id": client_id,
         "algorithm": settings.rate_limit.algorithm.value,
         "limit": state.get("limit", settings.rate_limit.max_requests),
         "remaining": state.get("remaining", 0),
-        "state": state,
+        "state": {k: v for k, v in state.items() if k != "document"},
     }
+    if raw:
+        res["document"] = state.get("document", None)
+    return res
 
 
 @app.delete("/status/{client_id}", tags=["Monitoring"])
 async def clear_status(client_id: str) -> Dict[str, Any]:
     """Clear all rate-limit documents for a client (useful for testing)."""
-    deleted = clear_client_state(db, client_id)
+    try:
+        deleted = await run_in_threadpool(clear_client_state, db, client_id)
+    except PyMongoError as exc:
+        logger.error("MongoDB error clearing client status: %s", exc)
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Database unavailable. Please try again later."},
+        )
     return {"client_id": client_id, "documents_deleted": deleted}
 
 
@@ -316,4 +353,4 @@ if STATIC_DIR.is_dir():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)

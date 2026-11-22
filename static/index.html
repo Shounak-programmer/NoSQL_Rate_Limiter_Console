@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-radius="sharp" data-motion="on">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -9,11 +9,10 @@
     <!-- Google Fonts: Onest + JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Onest:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
 
-    <!-- Design System Assets -->
-    <link rel="stylesheet" href="/static/assets/system.css">
-    <link rel="stylesheet" href="/static/assets/motion/motion.css">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 
@@ -36,49 +35,54 @@
                 <span class="status-dot" id="statusDot"></span>
                 <span id="statusText">Connecting...</span>
             </div>
-            <span class="algo-badge" id="currentAlgo">—</span>
+            <button type="button" class="btn btn-ghost mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle settings panel" aria-expanded="false">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </button>
         </div>
     </header>
 
     <!-- Toast Notification Container -->
-    <div class="toast-container" id="toastContainer"></div>
+    <div class="toast-container" id="toastContainer" role="status" aria-live="polite"></div>
 
-    <!-- Main Workspace Grid (3 Columns) -->
+    <!-- Main Workspace (Left Rail + Main Area) -->
     <main class="app-container">
 
-        <!-- Left Column: Algorithm & Storage Operations -->
-        <aside class="column-left">
+        <!-- Left Rail (320px, scrolls independently) -->
+        <aside class="left-rail" id="leftRail">
 
-            <!-- Card 1: Algorithm & Policy -->
-            <section class="card">
+            <!-- 1. Algorithm and policy -->
+            <section class="rail-section" id="sectionPolicy">
                 <div class="card-header">
-                    <div class="card-title">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="3"></circle>
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                        </svg>
-                        Algorithm & Policy
-                    </div>
+                    <div class="card-title">Algorithm and policy</div>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="algorithm">Algorithm Engine</label>
-                    <select class="form-select" id="algorithm">
-                        <option value="token_bucket">Token Bucket (Atomic Refill)</option>
-                        <option value="sliding_window">Sliding Window Log (Exact Log)</option>
-                        <option value="fixed_window">Fixed Window Counter (Discrete TTL)</option>
-                    </select>
+                    <label class="form-label">Algorithm</label>
+                    <input type="hidden" id="algorithm" value="token_bucket">
+                    <div class="segmented-control" role="radiogroup" aria-label="Algorithm selection">
+                        <label class="segment-option">
+                            <input type="radio" name="algorithm_choice" value="token_bucket" checked>
+                            <span class="segment-label">Token bucket</span>
+                        </label>
+                        <label class="segment-option">
+                            <input type="radio" name="algorithm_choice" value="sliding_window">
+                            <span class="segment-label">Sliding window</span>
+                        </label>
+                        <label class="segment-option">
+                            <input type="radio" name="algorithm_choice" value="fixed_window">
+                            <span class="segment-label">Fixed window</span>
+                        </label>
+                    </div>
+                    <div class="algo-description" id="algoDescription">
+                        Replenishes tokens dynamically at a steady rate; allows bursts up to capacity.
+                    </div>
                 </div>
 
-                <div class="form-row">
-                    <div class="form-group" id="rateLimitGroup">
-                        <label class="form-label" for="rateLimit">Max Requests</label>
-                        <input class="form-input" type="number" id="rateLimit" value="10" min="1" max="1000">
-                    </div>
-                    <div class="form-group" id="windowGroup">
-                        <label class="form-label" for="windowSize">Window (sec)</label>
-                        <input class="form-input" type="number" id="windowSize" value="60" min="1" max="3600">
-                    </div>
+                <div class="form-group" id="rateLimitGroup">
+                    <label class="form-label" for="rateLimit">Max Requests</label>
+                    <input class="form-input" type="number" id="rateLimit" value="10" min="1" max="1000">
                 </div>
 
                 <div class="form-group" id="refillGroup">
@@ -87,162 +91,54 @@
                     <span class="input-hint">Replenishes tokens dynamically via MongoDB pipeline</span>
                 </div>
 
-                <button class="btn btn-primary btn-block" id="applyConfig">
+                <div class="form-group" id="windowGroup" style="display: none;">
+                    <label class="form-label" for="windowSize">Window (sec)</label>
+                    <input class="form-input" type="number" id="windowSize" value="60" min="1" max="3600">
+                    <span class="input-hint">Duration of the rate evaluation window</span>
+                </div>
+
+                <button type="button" class="btn btn-secondary btn-block" id="applyConfig" disabled>
                     Apply Policy Changes
                 </button>
             </section>
 
-            <!-- Card 2: Storage Operations -->
-            <section class="card">
+            <!-- 2. Send requests (Client ID + Send + Inspect) -->
+            <section class="rail-section" id="sectionSend">
                 <div class="card-header">
-                    <div class="card-title">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
-                            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
-                            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
-                        </svg>
-                        Storage Operations
-                    </div>
-                </div>
-
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <button class="btn btn-ghost btn-block" id="resetClientQuota">
-                        Reset Client Quota (MongoDB Delete)
-                    </button>
-                    <div class="btn-group">
-                        <button class="btn btn-ghost" id="refreshConfig">Refresh</button>
-                        <button class="btn btn-ghost" id="clearLog">Clear Log</button>
-                    </div>
-                </div>
-            </section>
-
-        </aside>
-
-        <!-- Middle Column: Metrics, Capacity Allocation & Telemetry -->
-        <div class="column-center">
-
-            <!-- 4 Small Boxes: Metrics Ribbon -->
-            <div class="metrics-grid">
-                <div class="metric-card total">
-                    <div class="metric-label">Total Handled</div>
-                    <div class="metric-value" id="statTotal">0</div>
-                </div>
-                <div class="metric-card allowed">
-                    <div class="metric-label">200 Allowed</div>
-                    <div class="metric-value" id="statAllowed">0</div>
-                </div>
-                <div class="metric-card blocked">
-                    <div class="metric-label">429 Throttled</div>
-                    <div class="metric-value" id="statBlocked">0</div>
-                </div>
-                <div class="metric-card remaining">
-                    <div class="metric-label">Active Quota</div>
-                    <div class="metric-value" id="statRemaining">—</div>
-                </div>
-            </div>
-
-            <!-- Capacity Allocation: Capacity Barometer -->
-            <div class="card barometer-card">
-                <div class="barometer-header">
-                    <div class="card-title" style="margin-bottom: 0;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="18" y1="20" x2="18" y2="10"></line>
-                            <line x1="12" y1="20" x2="12" y2="4"></line>
-                            <line x1="6" y1="20" x2="6" y2="14"></line>
-                        </svg>
-                        Live Capacity Allocation
-                    </div>
-                    <span class="barometer-percent" id="meterPercent">—%</span>
-                </div>
-
-                <div class="barometer-track">
-                    <div class="barometer-fill high" id="meterFill" style="width: 100%;"></div>
-                </div>
-
-                <div class="barometer-ticks">
-                    <span>0 (Exhausted)</span>
-                    <span id="meterMax">— Max Limit</span>
-                </div>
-            </div>
-
-            <!-- Telemetry: Real-time Request Stream Log -->
-            <div class="card log-card">
-                <div class="card-header">
-                    <div class="card-title" style="margin-bottom: 0;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="4 17 10 11 4 5"></polyline>
-                            <line x1="12" y1="19" x2="20" y2="19"></line>
-                        </svg>
-                        Telemetry Stream
-                    </div>
-                    <span class="log-meta" id="logCount">0 events</span>
-                </div>
-
-                <div class="log-terminal" id="logScroll">
-                    <div class="log-empty" id="logEmpty">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="8" x2="12" y2="12"></line>
-                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                        </svg>
-                        <div>No traffic recorded yet.</div>
-                        <div style="font-size: 11px; opacity: 0.7;">Dispatch a request or run a burst sequence to inspect rate limits in real time.</div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- Right Column: Traffic Dispatcher & Stress Engine -->
-        <aside class="column-right">
-
-            <!-- Card 3: Traffic Dispatcher -->
-            <section class="card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="22" y1="2" x2="11" y2="13"></line>
-                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                        </svg>
-                        Traffic Dispatcher
-                    </div>
+                    <div class="card-title">Send requests</div>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label" for="clientId">Target Client ID</label>
-                    <input class="form-input" type="text" id="clientId" value="127.0.0.1" placeholder="e.g. 192.168.1.1 or api-key-prod">
+                    <input class="form-input" type="text" id="clientId" value="127.0.0.1"
+                        placeholder="e.g. 192.168.1.1 or api-key-prod">
                     <span class="input-hint">Passed as X-Client-ID header to test multi-tenancy</span>
                 </div>
 
                 <div class="btn-group">
-                    <button class="btn btn-secondary" id="sendRequest">
-                        Send 1 Request
+                    <button type="button" class="btn btn-primary" id="sendRequest">
+                        Send request
                     </button>
-                    <button class="btn btn-ghost" id="checkStatus">
-                        Query State
+                    <button type="button" class="btn btn-ghost" id="checkStatus">
+                        Inspect document
                     </button>
                 </div>
             </section>
 
-            <!-- Card 4: Stress Engine -->
-            <section class="card">
+            <!-- 3. Burst test -->
+            <section class="rail-section" id="sectionBurst">
                 <div class="card-header">
-                    <div class="card-title">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
-                            <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
-                            <line x1="6" y1="1" x2="6" y2="4"></line>
-                            <line x1="10" y1="1" x2="10" y2="4"></line>
-                            <line x1="14" y1="1" x2="14" y2="4"></line>
-                        </svg>
-                        Stress Engine
-                    </div>
+                    <div class="card-title">Burst test</div>
                 </div>
 
-                <div class="form-row">
+                <div class="form-row" style="grid-template-columns: 1fr 1fr 1fr;">
                     <div class="form-group">
                         <label class="form-label" for="burstCount">Burst Count</label>
                         <input class="form-input" type="number" id="burstCount" value="15" min="1" max="200">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="burstConcurrency">Concurrency</label>
+                        <input class="form-input" type="number" id="burstConcurrency" value="1" min="1" max="50">
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="burstDelay">Interval (ms)</label>
@@ -250,17 +146,117 @@
                     </div>
                 </div>
 
-                <button class="btn btn-danger btn-block" id="burstTest" style="margin-top: 8px;">
-                    Execute Burst Sequence
+                <button type="button" class="btn btn-secondary btn-block" id="burstTest" style="margin-top: 8px;">
+                    Run burst
                 </button>
+            </section>
+
+            <!-- 4. Client data -->
+            <section class="rail-section" id="sectionClient">
+                <div class="card-header">
+                    <div class="card-title">Client data</div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <button type="button" class="btn btn-ghost btn-block" id="resetClientQuota">
+                        Delete client document
+                    </button>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-ghost" id="refreshConfig">Refresh</button>
+                        <button type="button" class="btn btn-ghost" id="clearLog">Clear Log</button>
+                    </div>
+                </div>
             </section>
 
         </aside>
 
+        <!-- Main Area (fluid, fills viewport height under header) -->
+        <section class="main-area">
+
+            <!-- 1. Metric Strip -->
+            <div class="metric-strip">
+                <div class="metric-item total">
+                    <div class="metric-label">Total Handled</div>
+                    <div class="metric-value" id="statTotal">0</div>
+                </div>
+                <div class="metric-item allowed">
+                    <div class="metric-label">200 Allowed</div>
+                    <div class="metric-value" id="statAllowed">0</div>
+                </div>
+                <div class="metric-item blocked">
+                    <div class="metric-label">429 Throttled</div>
+                    <div class="metric-value" id="statBlocked">0</div>
+                </div>
+                <div class="metric-item remaining">
+                    <div class="metric-label">Remaining</div>
+                    <div class="metric-value" id="statRemaining">10</div>
+                </div>
+            </div>
+
+            <!-- 2. Capacity Time-Series Chart -->
+            <div class="card capacity-card barometer-card">
+                <div class="capacity-header barometer-header">
+                    <div class="card-title" style="margin-bottom: 0;">Capacity</div>
+                    <span class="capacity-ratio" id="capacityRatio">
+                        <span class="capacity-remaining" id="traceRemaining">10</span>
+                        <span class="capacity-sep">/</span>
+                        <span class="capacity-limit" id="traceLimit">10</span>
+                    </span>
+                </div>
+
+                <div class="trace-container" id="traceContainer">
+                    <svg class="trace-svg" id="traceSvg" viewBox="0 0 600 140" preserveAspectRatio="xMidYMid meet" role="img"
+                        aria-label="Capacity over time">
+                        <!-- Chart rendered by trace.js -->
+                    </svg>
+                </div>
+
+                <!-- Hidden legacy anchors for app.js backwards-compatibility -->
+                <div style="display: none;" aria-hidden="true">
+                    <span id="meterPercent"></span>
+                    <span id="meterFill"></span>
+                    <span id="meterMax"></span>
+                </div>
+            </div>
+
+            <!-- 3. Telemetry: Request Log (fills remaining height and scrolls inside itself) -->
+            <div class="card log-card">
+                <div class="card-header">
+                    <div class="card-title" style="margin-bottom: 0;">Request log</div>
+                    <span class="log-meta" id="logCount">0 events</span>
+                </div>
+
+                <div class="log-terminal" id="logScroll">
+                    <div class="log-table-header" id="logHeader">
+                        <span>Time</span>
+                        <span>Client</span>
+                        <span>Status</span>
+                        <span class="num-col">Remaining</span>
+                        <span class="num-col">Retry-After</span>
+                        <span class="num-col">Latency</span>
+                    </div>
+                    <div class="log-empty" id="logEmpty">No requests logged yet.</div>
+                </div>
+            </div>
+
+            <!-- 4. MongoDB Document Panel -->
+            <div class="card doc-card" id="docPanel">
+                <div class="card-header">
+                    <div class="card-title" style="margin-bottom: 0;">MongoDB document</div>
+                </div>
+                <div class="doc-tokens-line" id="effectiveTokensRow" style="display: none;">effective tokens: <span
+                        id="effectiveTokensVal">—</span></div>
+                <div class="doc-terminal">
+                    <pre class="doc-code" id="docCode"><code>null</code></pre>
+                </div>
+            </div>
+
+        </section>
+
     </main>
 
     <!-- Client Logic -->
-    <script src="/static/assets/motion/motion.js"></script>
+    <script src="/static/trace.js"></script>
     <script src="/static/app.js"></script>
 </body>
 
