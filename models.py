@@ -62,6 +62,7 @@ import time
 from typing import Any, Dict, Optional
 
 from bson import ObjectId
+import certifi
 from pymongo import ASCENDING, MongoClient
 from pymongo.database import Database
 
@@ -83,10 +84,15 @@ FIXED_WINDOW_COLLECTION = "fixed_windows"
 def get_mongo_client() -> MongoClient:
     """Return a configured ``pymongo.MongoClient`` with local fallback if remote is unreachable."""
     cfg = settings.mongo
+    extra_kwargs = {}
+    if "mongodb+srv" in cfg.uri or "ssl=true" in cfg.uri.lower() or "tls=true" in cfg.uri.lower():
+        extra_kwargs["tlsCAFile"] = certifi.where()
+
     try:
         client = MongoClient(
             cfg.uri,
             serverSelectionTimeoutMS=cfg.server_selection_timeout_ms,
+            **extra_kwargs,
         )
         client.admin.command("ping")
         return client
@@ -103,6 +109,7 @@ def get_mongo_client() -> MongoClient:
         return MongoClient(
             cfg.uri,
             serverSelectionTimeoutMS=cfg.server_selection_timeout_ms,
+            **extra_kwargs,
         )
 
 

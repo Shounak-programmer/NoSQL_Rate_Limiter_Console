@@ -5,4 +5,5 @@ requests
 httpx
 dnspython
 python-dotenv
+certifi
 
