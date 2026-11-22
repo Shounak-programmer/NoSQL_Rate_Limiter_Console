@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: nosql-rate-limiter
+    runtime: docker
+    plan: free
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: MONGO_DB
+        value: rate_limiter
+      - key: RATE_LIMIT_ALGORITHM
+        value: token_bucket
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: "10"
+      - key: RATE_LIMIT_WINDOW_SECONDS
+        value: "60"
+      - key: RATE_LIMIT_REFILL_RATE
+        value: "1.0"
