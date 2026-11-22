@@ -79,12 +79,29 @@ FIXED_WINDOW_COLLECTION = "fixed_windows"
 # ---------------------------------------------------------------------------
 
 def get_mongo_client() -> MongoClient:
-    """Return a configured ``pymongo.MongoClient``."""
+    """Return a configured ``pymongo.MongoClient`` with local fallback if remote is unreachable."""
     cfg = settings.mongo
-    return MongoClient(
-        cfg.uri,
-        serverSelectionTimeoutMS=cfg.server_selection_timeout_ms,
-    )
+    try:
+        client = MongoClient(
+            cfg.uri,
+            serverSelectionTimeoutMS=cfg.server_selection_timeout_ms,
+        )
+        client.admin.command("ping")
+        return client
+    except Exception:
+        # If remote Atlas cluster cannot be reached (e.g., dynamic IP change on local machine),
+        # gracefully fall back to local mongod if running.
+        if "127.0.0.1" not in cfg.uri and "localhost" not in cfg.uri:
+            try:
+                local_client = MongoClient("mongodb://127.0.0.1:27017", serverSelectionTimeoutMS=2000)
+                local_client.admin.command("ping")
+                return local_client
+            except Exception:
+                pass
+        return MongoClient(
+            cfg.uri,
+            serverSelectionTimeoutMS=cfg.server_selection_timeout_ms,
+        )
 
 
 def get_database(client: Optional[MongoClient] = None) -> Database:
