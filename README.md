@@ -194,6 +194,9 @@ rate limiter/
 
 ---
 
+## Live Deployment Website
+- The project is already hosted on (`https://nosql-rate-limiter.shounak25.me/dashboard`). You can try it out for free. However if you want to run it locally, here are the steps to do so:
+
 ## Setup & Installation
 
 ### Prerequisites
