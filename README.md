@@ -256,8 +256,8 @@ Visit **http://localhost:8000/dashboard** to:
 ## Limitations
 
 - **Client identity is header-trusted**: Client identification relies on the `X-Client-ID` header (falling back to `X-Forwarded-For` or client IP). In untrusted environments, clients can spoof their identity unless an upstream reverse proxy or API gateway sanitizes or strips these headers.
-- **Configuration endpoints are unauthenticated**: The policy endpoints (`GET /config`, `POST /config`, and `DELETE /status/{client_id}`) are open and unauthenticated for local demonstration and assignment inspection purposes. In production, administrative routes must be protected behind authentication and authorization middleware.
-- **Time source is the application server clock**: Time-based algorithms (`Token Bucket` refill and window boundaries) rely on the application server's system clock (`time.time()`). Clock drift across multi-instance deployments would lead to inconsistent rate evaluation; production multi-instance topologies should use NTP synchronization or a centralized database timestamp source.
+- **Configuration endpoints are unauthenticated**: The policy endpoints (`GET /config`, `POST /config`, and `DELETE /status/{client_id}`) are open and unauthenticated for local demonstration and assignment inspection purposes. In production, administrative routes will be protected behind authentication and authorization middleware.
+- **Time source is the application server clock**: Time-based algorithms (`Token Bucket` refill and window boundaries) rely on the application server's system clock (`time.time()`). Clock drift across multi-instance deployments would lead to inconsistent rate evaluation; production multi-instance topologies will need to use NTP synchronization or a centralized database timestamp source.
 
 ---
 
